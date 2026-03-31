@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buchcover-Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', sans-serif; background: #fff; color: #111; padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
+  h2.section-title { font-weight: 600; font-size: 1.05rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e0e0e0; }
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+  .field { margin-bottom: 1.75rem; }
+  .field label { display: block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 0.5rem; }
+  .field input[type="text"] { width: 100%; border: none; border-bottom: 1px solid #ccc; padding: 0.55rem 0; font-family: 'EB Garamond', serif; font-size: 1.15rem; color: #111; background: transparent; outline: none; transition: border-color 0.2s; }
+  .field input[type="text"]:focus { border-bottom-color: #111; }
+  .field input[type="text"]::placeholder { color: #ccc; font-style: italic; }
+  .upload-zone { display: block; border: 1px dashed #bbb; padding: 1.5rem; text-align: center; cursor: pointer; background: #fafafa; transition: border-color 0.2s; }
+  .upload-zone:hover { border-color: #111; }
+  .upload-zone input { display: none; }
+  .upload-zone p { font-size: 0.8rem; color: #999; font-weight: 300; }
+  .upload-zone strong { color: #555; font-weight: 500; }
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 0.75rem; }
+  .photo-thumb { position: relative; aspect-ratio: 1; overflow: hidden; cursor: pointer; }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-thumb.selected::after { content: ''; position: absolute; inset: 0; border: 2px solid #111; pointer-events: none; }
+  .select-hint { font-size: 0.72rem; color: #aaa; margin-top: 0.5rem; font-weight: 300; }
+  .btn-generate { margin-top: 2rem; width: 100%; padding: 0.85rem; background: #111; color: #fff; border: none; font-family: 'Barlow', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; }
+  .btn-generate:hover:not(:disabled) { background: #333; }
+  .btn-generate:disabled { background: #ccc; cursor: not-allowed; }
+  .error-msg { font-size: 0.78rem; color: #c0392b; margin-top: 0.75rem; font-weight: 300; display: none; }
+  .result-section { position: sticky; top: 2rem; }
+  .result-placeholder { aspect-ratio: 2/3; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; color: #bbb; border: 1px dashed #ddd; }
+  .result-placeholder p { font-size: 0.8rem; font-weight: 300; }
+  .loading-state { display: none; aspect-ratio: 2/3; background: #f5f5f5; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; border: 1px solid #e0e0e0; }
+  .spinner { width: 28px; height: 28px; border: 2px solid #e0e0e0; border-top-color: #111; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state p { font-size: 0.75rem; color: #aaa; font-weight: 300; letter-spacing: 0.06em; }
+  #book-cover { display: none; width: 100%; aspect-ratio: 2/3; box-shadow: 8px 12px 40px rgba(0,0,0,0.18), 2px 4px 8px rgba(0,0,0,0.1); overflow: hidden; }
+  #book-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .cover-actions { display: none; gap: 8px; margin-top: 1rem; }
+  .btn-download { flex: 1; padding: 0.7rem; background: transparent; border: 1px solid #111; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #111; transition: background 0.2s, color 0.2s; text-align: center; text-decoration: none; display: block; }
+  .btn-download:hover { background: #111; color: #fff; }
+  .btn-retry { padding: 0.7rem 1rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #666; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
+  .btn-retry:hover { border-color: #111; color: #111; }
+  @media (max-width: 700px) { .layout { grid-template-columns: 1fr; gap: 3rem; } .result-section { position: static; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="form-section">
+    <h2 class="section-title">Dein Buchcover</h2>
+    <div class="field">
+      <label>Dein Name</label>
+      <input type="text" id="input-name" placeholder="z. B. Maria Müller" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Titel deiner Autobiografie</label>
+      <input type="text" id="input-title" placeholder="z. B. Gegen alle Widerstände" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Fotos von dir (bis zu 3)</label>
+      <label class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept="image/*" multiple>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <p><strong>Klicken</strong> oder Foto hierher ziehen</p>
+        <p style="margin-top:0.25rem;">JPG, PNG · bis zu 3 Fotos</p>
+      </label>
+      <div class="photo-grid" id="photo-grid"></div>
+      <p class="select-hint" id="select-hint" style="display:none">Klicke auf das Foto, das auf dem Cover erscheinen soll.</p>
+    </div>
+    <button class="btn-generate" id="btn-generate">Cover generieren</button>
+    <p class="error-msg" id="error-msg"></p>
+  </div>
+  <div class="result-section">
+    <h2 class="section-title">Vorschau</h2>
+    <div class="result-placeholder" id="result-placeholder">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+      <p>Dein Cover erscheint hier</p>
+    </div>
+    <div class="loading-state" id="loading-state">
+      <div class="spinner"></div>
+      <p>Cover wird erstellt …</p>
+    </div>
+    <div id="book-cover"><img id="cover-img" src="" alt="Buchcover"></div>
+    <div class="cover-actions" id="cover-actions">
+      <button class="btn-download" id="btn-download">&#8595; Cover herunterladen</button>
+      <button class="btn-retry" id="btn-retry">Anderes Cover</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+
+  // ── Subtitles (exact spelling preserved)
+  var SUBTITLES = [
+    null,
+    'Meine Geschichte',
+    'Mein Leben',
+    'Was mich wirklich geprägt hat',
+    'Die Schlüsselmomente meines Lebens',
+    'Eine Autobiografie'
+  ];
+
+  // ── Variant table: 8 combos of layout / treatment / subtitle / crop
+  //  layout:    0=Nawalny 1=SteveJobs 2=ElliotPage 3=BenZucker 4=WillyBrandt 5=ThomasSchaaf 6=HannahArendt
+  //  treatment: 0=B&W  1=colour  2=desaturated  3=sepia
+  //  subIdx:    index into SUBTITLES (0=none)
+  //  anchor:    unused now (head-safe logic handles positioning)
+  var VARIANTS = [
+    { layout:4, treatment:3, subIdx:2, anchor:0.10 },  // 0: Brandt/Sepia – Favoritvariante
+    { layout:0, treatment:0, subIdx:0, anchor:0.08 },  // 1: Nawalny/B&W
+    { layout:4, treatment:0, subIdx:1, anchor:0.10 },  // 2: Brandt/B&W
+    { layout:1, treatment:1, subIdx:2, anchor:0.05 },  // 3: SteveJobs/colour
+    { layout:6, treatment:1, subIdx:4, anchor:0.08 },  // 4: Arendt/colour
+    { layout:3, treatment:0, subIdx:5, anchor:0.15 },  // 5: BenZucker/B&W
+    { layout:2, treatment:0, subIdx:0, anchor:0.0  },  // 6: ElliotPage/B&W
+    { layout:5, treatment:1, subIdx:3, anchor:0.0  },  // 7: Schaaf/colour
+  ];
+
+  var photos      = [];
+  var selectedIdx = 0;
+  var variantSeed = 0;
+  var lastParams  = null;
+  var lastDataUrl = null;
+
+  var fileInput         = document.getElementById('file-input');
+  var uploadZone        = document.getElementById('upload-zone');
+  var photoGrid         = document.getElementById('photo-grid');
+  var selectHint        = document.getElementById('select-hint');
+  var btnGenerate       = document.getElementById('btn-generate');
+  var inputName         = document.getElementById('input-name');
+  var inputTitle        = document.getElementById('input-title');
+  var resultPlaceholder = document.getElementById('result-placeholder');
+  var loadingState      = document.getElementById('loading-state');
+  var bookCover         = document.getElementById('book-cover');
+  var coverImg          = document.getElementById('cover-img');
+  var coverActions      = document.getElementById('cover-actions');
+  var btnDownload       = document.getElementById('btn-download');
+  var btnRetry          = document.getElementById('btn-retry');
+  var errorMsg          = document.getElementById('error-msg');
+
+  uploadZone.addEventListener('dragover', function(e){e.preventDefault();uploadZone.style.borderColor='#111';});
+  uploadZone.addEventListener('dragleave',function(){uploadZone.style.borderColor='#bbb';});
+  uploadZone.addEventListener('drop',function(e){e.preventDefault();uploadZone.style.borderColor='#bbb';handleFiles(e.dataTransfer.files);});
+  fileInput.addEventListener('change',function(){handleFiles(fileInput.files);});
+
+  function handleFiles(files){
+    var slots=3-photos.length;
+    Array.from(files).slice(0,slots).forEach(function(file){
+      var r=new FileReader();
+      r.onload=function(ev){photos.push({dataUrl:ev.target.result});if(photos.length===1)selectedIdx=0;renderThumbs();};
+      r.readAsDataURL(file);
+    });
+  }
+
+  function renderThumbs(){
+    photoGrid.innerHTML='';
+    photos.forEach(function(p,i){
+      var div=document.createElement('div');div.className='photo-thumb'+(i===selectedIdx?' selected':'');
+      var img=document.createElement('img');img.src=p.dataUrl;div.appendChild(img);
+      div.addEventListener('click',(function(i){return function(){selectedIdx=i;renderThumbs();};})(i));
+      photoGrid.appendChild(div);
+    });
+    selectHint.style.display=photos.length>1?'block':'none';
+    if(photos.length>=3)fileInput.disabled=true;
+  }
+
+  function setState(s){
+    resultPlaceholder.style.display=s==='empty'?'flex':'none';
+    loadingState.style.display=s==='loading'?'flex':'none';
+    bookCover.style.display=s==='done'?'block':'none';
+    coverActions.style.display=s==='done'?'flex':'none';
+    btnGenerate.disabled=s==='loading';
+  }
+
+  function showError(msg){errorMsg.textContent=msg;errorMsg.style.display='block';}
+  function hideError(){errorMsg.style.display='none';}
+
+  btnGenerate.addEventListener('click',function(){
+    var name=inputName.value.trim();var title=inputTitle.value.trim();
+    hideError();
+    if(!name||!title){showError('Bitte gib deinen Namen und einen Titel ein.');return;}
+    if(photos.length===0){showError('Bitte lade mindestens ein Foto hoch.');return;}
+    variantSeed=0;setState('loading');
+    if(photos.length>1){
+      pickBestPhoto(name,title,function(ci){lastParams={idx:ci,name:name,title:title};buildAndShow(ci,name,title,0);});
+    }else{
+      lastParams={idx:0,name:name,title:title};buildAndShow(0,name,title,0);
+    }
+  });
+
+  btnDownload.addEventListener('click',function(){
+    if(!lastDataUrl)return;
+    var a=document.createElement('a');a.href=lastDataUrl;a.download='buchcover.png';
+    document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},100);
+  });
+
+  btnRetry.addEventListener('click',function(){
+    if(!lastParams)return;
+    variantSeed=(variantSeed+1)%VARIANTS.length;
+    setState('loading');
+    // Rotate photo every 3 variants when multiple available
+    var nextIdx=lastParams.idx;
+    if(photos.length>1&&variantSeed%3===0){
+      nextIdx=(lastParams.idx+1)%photos.length;lastParams.idx=nextIdx;
+    }
+    buildAndShow(nextIdx,lastParams.name,lastParams.title,variantSeed);
+  });
+
+  function pickBestPhoto(name,title,callback){
+    var content=photos.map(function(p){return{type:'image',source:{type:'base64',media_type:mimeOf(p.dataUrl),data:p.dataUrl.split(',')[1]}};});
+    content.push({type:'text',text:photos.length+' Fotos. Welches (Index 0 bis '+(photos.length-1)+') eignet sich am besten fuer ein professionelles Buchcover? Antworte NUR mit einer einzigen Ziffer.'});
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:5,messages:[{role:'user',content:content}]})
+    }).then(function(r){return r.json();})
+    .then(function(d){var t=(d.content&&d.content[0]&&d.content[0].text)?d.content[0].text.trim():'0';var n=parseInt(t,10);callback((isNaN(n)||n<0||n>=photos.length)?0:n);})
+    .catch(function(){callback(0);});
+  }
+
+  // ── Colour treatments ──────────────────────────────────────
+  function applyTreatment(d,t){
+    var i,r,g,b,gray;
+    if(t===0){for(i=0;i<d.length;i+=4){gray=Math.min(255,(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)*1.05);d[i]=d[i+1]=d[i+2]=gray;}}
+    else if(t===1){for(i=0;i<d.length;i+=4){d[i]=Math.min(255,Math.max(0,(d[i]-128)*1.08+128));d[i+1]=Math.min(255,Math.max(0,(d[i+1]-128)*1.08+128));d[i+2]=Math.min(255,Math.max(0,(d[i+2]-128)*1.08+128));}}
+    else if(t===2){for(i=0;i<d.length;i+=4){gray=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;d[i]=Math.min(255,gray+(d[i]-gray)*0.4);d[i+1]=Math.min(255,gray+(d[i+1]-gray)*0.4);d[i+2]=Math.min(255,gray+(d[i+2]-gray)*0.4);}}
+    else{for(i=0;i<d.length;i+=4){r=d[i];g=d[i+1];b=d[i+2];d[i]=Math.min(255,r*0.393+g*0.769+b*0.189);d[i+1]=Math.min(255,r*0.349+g*0.686+b*0.168);d[i+2]=Math.min(255,r*0.272+g*0.534+b*0.131);}}
+  }
+
+  // ── Crop photo onto temp canvas, preserving head
+  // headroom: fraction of canvas height to keep above face (approx top of image)
+  function cropPhoto(srcImg,W,H,anchor){
+    var c=document.createElement('canvas');c.width=W;c.height=H;var ctx=c.getContext('2d');
+    var aspect=srcImg.naturalWidth/srcImg.naturalHeight;
+    var sw=W,sh=W/aspect;
+    if(sh<H){sh=H;sw=H*aspect;}
+    // anchor: 0 = align top, 1 = align bottom. We bias toward top to preserve head.
+    var oy=-(sh-H)*anchor;
+    ctx.drawImage(srcImg,(W-sw)/2,oy,sw,sh);
+    return c;
+  }
+
+  // ── Text helpers ────────────────────────────────────────────
+  function wrapText(ctx,text,x,y,maxW,lh){
+    var words=text.split(' ');var line='';
+    for(var i=0;i<words.length;i++){
+      var test=line+words[i]+' ';
+      if(line&&ctx.measureText(test).width>maxW){ctx.fillText(line.trim(),x,y);line=words[i]+' ';y+=lh;}
+      else line=test;
+    }
+    if(line.trim())ctx.fillText(line.trim(),x,y);
+    return y;
+  }
+
+  function fitFont(ctx,text,fontTpl,maxW,startSz){
+    var sz=startSz;
+    ctx.font=fontTpl.replace('{{sz}}',sz);
+    while(sz>18&&ctx.measureText(text).width>maxW){sz-=2;ctx.font=fontTpl.replace('{{sz}}',sz);}
+    return sz;
+  }
+
+  function centreX(ctx,text,W){return(W-ctx.measureText(text).width)/2;}
+
+  function vGrad(ctx,W,H,fromY,toY,colRGB,a0,a1){
+    var g=ctx.createLinearGradient(0,fromY,0,toY);
+    g.addColorStop(0,'rgba('+colRGB+','+a0+')');g.addColorStop(1,'rgba('+colRGB+','+a1+')');
+    ctx.fillStyle=g;ctx.fillRect(0,fromY,W,toY-fromY);
+  }
+
+  // ── LAYOUT FUNCTIONS ────────────────────────────────────────
+
+  // 0: Nawalny – full-bleed, bold condensed name top-left, big title bottom-left
+  function layout0(ctx,W,H,name,title,sub){
+    vGrad(ctx,W,H,0,H*0.42,'0,0,0',0.72,0.0);
+    vGrad(ctx,W,H,H*0.52,H,'0,0,0',0.0,0.82);
+    var parts=name.toUpperCase().split(' ');
+    var sz=Math.round(W*0.118);var y=Math.round(H*0.115);
+    parts.forEach(function(p){
+      ctx.font='800 '+sz+'px "Barlow Condensed",sans-serif';
+      while(ctx.measureText(p).width>W-80&&sz>24){sz-=2;ctx.font='800 '+sz+'px "Barlow Condensed",sans-serif';}
+      ctx.fillStyle='#fff';ctx.fillText(p,50,y);y+=sz*1.08;
+    });
+    var tsz=Math.round(W*0.108);
+    ctx.font='800 '+tsz+'px "Barlow Condensed",sans-serif';
+    while(ctx.measureText(title.toUpperCase()).width>W-100&&tsz>24){tsz-=2;ctx.font='800 '+tsz+'px "Barlow Condensed",sans-serif';}
+    var by=sub?H-Math.round(H*0.155):H-Math.round(H*0.09);
+    ctx.fillStyle='#fff';wrapText(ctx,title.toUpperCase(),50,by,W-100,tsz*1.08);
+    if(sub){ctx.font='400 '+Math.round(W*0.038)+'px "Barlow",sans-serif';ctx.fillStyle='rgba(255,255,255,0.72)';ctx.fillText(sub,50,H-Math.round(H*0.055));}
+  }
+
+  // 1: Steve Jobs – pale top block, small name, huge title in block
+  function layout1(ctx,W,H,name,title,sub){
+    var bh=Math.round(H*0.4);
+    ctx.fillStyle='rgba(248,245,240,0.97)';ctx.fillRect(0,0,W,bh);
+    vGrad(ctx,W,H,bh,H,'0,0,0',0.0,0.18);
+    ctx.fillStyle='#222';ctx.font='400 '+Math.round(W*0.036)+'px "Barlow",sans-serif';
+    ctx.fillText(name,50,Math.round(H*0.085));
+    var tsz=Math.round(W*0.11);
+    ctx.font='700 '+tsz+'px "Playfair Display",serif';
+    while(ctx.measureText(title).width>W-100&&tsz>22){tsz-=2;ctx.font='700 '+tsz+'px "Playfair Display",serif';}
+    ctx.fillStyle='#111';
+    var ty=Math.round(H*0.16);var ey=wrapText(ctx,title,50,ty,W-100,tsz*1.15);
+    if(sub){ctx.font='400 '+Math.round(W*0.033)+'px "Barlow",sans-serif';ctx.fillStyle='#666';ctx.fillText(sub,50,ey+Math.round(H*0.038));}
+  }
+
+  // 2: Elliot Page – white frame top+bottom, photo framed, massive type above and below
+  // HEAD-SAFE: photo is positioned so it shows upper portion of image
+  function layout2(ctx,W,H,name,title,sub){
+    var pad=36;
+    var topH=Math.round(H*0.20);
+    var botH=sub?Math.round(H*0.20):Math.round(H*0.17);
+    // White bars
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,W,topH);ctx.fillRect(0,H-botH,W,botH);
+    // Border around photo area
+    ctx.strokeStyle='#ddd';ctx.lineWidth=1;
+    ctx.strokeRect(pad,topH+8,W-pad*2,H-topH-botH-16);
+    // Name top
+    var nsz=Math.round(H*0.088);
+    ctx.font='800 '+nsz+'px "Barlow Condensed",sans-serif';
+    while(ctx.measureText(name.toUpperCase()).width>W-60&&nsz>20){nsz-=2;ctx.font='800 '+nsz+'px "Barlow Condensed",sans-serif';}
+    ctx.fillStyle='#111';
+    ctx.fillText(name.toUpperCase(),centreX(ctx,name.toUpperCase(),W),Math.round(topH*0.78));
+    // Title bottom
+    var tsz=Math.round(H*0.075);
+    ctx.font='800 '+tsz+'px "Barlow Condensed",sans-serif';
+    while(ctx.measureText(title.toUpperCase()).width>W-60&&tsz>20){tsz-=2;ctx.font='800 '+tsz+'px "Barlow Condensed",sans-serif';}
+    ctx.fillStyle='#111';
+    ctx.fillText(title.toUpperCase(),centreX(ctx,title.toUpperCase(),W),H-Math.round(botH*0.3));
+    if(sub){ctx.font='400 '+Math.round(H*0.027)+'px "Barlow",sans-serif';ctx.fillStyle='#555';var sw=ctx.measureText(sub).width;ctx.fillText(sub,(W-sw)/2,H-botH+Math.round(botH*0.38));}
+  }
+
+  // 3: Ben Zucker – dark moody, split name big top, italic serif title
+  function layout3(ctx,W,H,name,title,sub){
+    vGrad(ctx,W,H,0,H*0.55,'0,0,0',0.68,0.0);
+    vGrad(ctx,W,H,H*0.45,H,'0,0,0',0.0,0.72);
+    var parts=name.split(' ');var first=parts[0]||name;var last=parts.slice(1).join(' ');
+    var fsz=Math.round(W*0.13);
+    ctx.font='800 '+fsz+'px "Barlow Condensed",sans-serif';
+    while(ctx.measureText(first.toUpperCase()).width>W-80&&fsz>24){fsz-=2;ctx.font='800 '+fsz+'px "Barlow Condensed",sans-serif';}
+    ctx.fillStyle='#fff';ctx.fillText(first.toUpperCase(),46,Math.round(H*0.14));
+    if(last){
+      var lsz=Math.round(W*0.13);ctx.font='800 '+lsz+'px "Barlow Condensed",sans-serif';
+      while(ctx.measureText(last.toUpperCase()).width>W-80&&lsz>24){lsz-=2;ctx.font='800 '+lsz+'px "Barlow Condensed",sans-serif';}
+      ctx.fillStyle='rgba(255,255,255,0.85)';ctx.fillText(last.toUpperCase(),46,Math.round(H*0.14)+fsz*1.1);
+    }
+    ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(46,H*0.63);ctx.lineTo(W-46,H*0.63);ctx.stroke();
+    var tsz=Math.round(W*0.095);ctx.font='italic 700 '+tsz+'px "Playfair Display",serif';
+    while(ctx.measureText(title).width>W-92&&tsz>22){tsz-=2;ctx.font='italic 700 '+tsz+'px "Playfair Display",serif';}
+    ctx.fillStyle='#fff';wrapText(ctx,title,46,H*0.66+tsz,W-92,tsz*1.15);
+    if(sub){ctx.font='300 '+Math.round(W*0.034)+'px "Barlow",sans-serif';ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillText(sub.toUpperCase(),46,H-Math.round(H*0.065));}
+  }
+
+  // 4: Willy Brandt – B&W photo fills all, name in accent RED bold, subtitle small
+  function layout4(ctx,W,H,name,title,sub){
+    vGrad(ctx,W,H,H*0.35,H,'0,0,0',0.0,0.88);
+    vGrad(ctx,W,H,0,H*0.3,'0,0,0',0.5,0.0);
+    // Small author label (acts like "Gregor Schöllgen" on Brandt cover)
+    ctx.fillStyle='rgba(255,255,255,0.8)';ctx.font='400 '+Math.round(W*0.034)+'px "Barlow",sans-serif';
+    ctx.fillText(name,50,Math.round(H*0.085));
+    // Title in bold red
+    var tsz=Math.round(W*0.13);ctx.font='900 '+tsz+'px "Barlow Condensed",sans-serif';
+    while(ctx.measureText(title.toUpperCase()).width>W-100&&tsz>24){tsz-=2;ctx.font='900 '+tsz+'px "Barlow Condensed",sans-serif';}
+    ctx.fillStyle='#e01a1a';
+    var ty=H-Math.round(H*(sub?0.19:0.1));
+    wrapText(ctx,title.toUpperCase(),50,ty,W-100,tsz*1.05);
+    if(sub){ctx.font='400 '+Math.round(W*0.038)+'px "Barlow",sans-serif';ctx.fillStyle='rgba(255,255,255,0.85)';ctx.fillText(sub,50,H-Math.round(H*0.055));}
+  }
+
+  // 5: Thomas Schaaf – extreme close-up (top-crop), name huge top on light bg, subtitle
+  function layout5(ctx,W,H,name,title,sub){
+    // Light overlay at top only
+    var topH=Math.round(H*0.34);
+    ctx.fillStyle='rgba(245,242,235,0.92)';ctx.fillRect(0,0,W,topH);
+    vGrad(ctx,W,H,topH*0.6,topH,'245,242,235',0.0,0.92);
+    // Name – split, ultra bold
+    var parts=name.toUpperCase().split(' ');var sz=Math.round(W*0.115);var y=Math.round(H*0.085);
+    parts.forEach(function(p){
+      ctx.font='900 '+sz+'px "Barlow Condensed",sans-serif';
+      while(ctx.measureText(p).width>W-60&&sz>22){sz-=2;ctx.font='900 '+sz+'px "Barlow Condensed",sans-serif';}
+      ctx.fillStyle='#111';ctx.fillText(p,40,y);y+=sz*1.05;
+    });
+    if(sub||title){
+      var lbl=sub||title;ctx.font='600 '+Math.round(W*0.042)+'px "Barlow",sans-serif';ctx.fillStyle='#333';
+      ctx.fillText(lbl.toUpperCase(),40,y+Math.round(H*0.018));
+    }
+    // Thin frame lines
+    ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=1;
+    ctx.strokeRect(18,18,W-36,H-36);
+  }
+
+  // 6: Hannah Arendt – coloured background strip behind name, portrait center, name large serif
+  function layout6(ctx,W,H,name,title,sub){
+    // Teal/coloured band at top
+    var bandH=Math.round(H*0.22);
+    ctx.fillStyle='#3a7d7b';ctx.fillRect(0,0,W,bandH);
+    // Gradient at bottom
+    vGrad(ctx,W,H,H*0.6,H,'0,0,0',0.0,0.65);
+    // Name – large on teal band
+    var nsz=Math.round(W*0.088);ctx.font='700 '+nsz+'px "Playfair Display",serif';
+    while(ctx.measureText(name).width>W-80&&nsz>22){nsz-=2;ctx.font='700 '+nsz+'px "Playfair Display",serif';}
+    ctx.fillStyle='#fff';ctx.fillText(name,centreX(ctx,name,W),Math.round(bandH*0.72));
+    // Title – large bold lower area
+    var tsz=Math.round(W*0.1);ctx.font='900 '+tsz+'px "Barlow Condensed",sans-serif';
+    while(ctx.measureText(title.toUpperCase()).width>W-80&&tsz>22){tsz-=2;ctx.font='900 '+tsz+'px "Barlow Condensed",sans-serif';}
+    ctx.fillStyle='#fff';var ty=H-(sub?Math.round(H*0.175):Math.round(H*0.09));
+    wrapText(ctx,title.toUpperCase(),40,ty,W-80,tsz*1.1);
+    if(sub){ctx.font='400 '+Math.round(W*0.035)+'px "Barlow",sans-serif';ctx.fillStyle='rgba(255,255,255,0.75)';ctx.fillText(sub,40,H-Math.round(H*0.052));}
+  }
+
+  // Returns the Y coordinate where the photo region starts for a given layout.
+  // Layouts with an opaque top block must not draw the photo behind that block.
+  function photoStartY(layout, W, H) {
+    if (layout === 1) return Math.round(H * 0.4);   // Steve Jobs: pale block top 40%
+    if (layout === 5) return Math.round(H * 0.34);  // Schaaf: light block top 34%
+    if (layout === 6) return Math.round(H * 0.22);  // Arendt: colour band top 22%
+    if (layout === 2) return Math.round(H * 0.20);  // Elliot Page: white bar top 20%
+    return 0; // all other layouts: full bleed
+  }
+
+  // Draw srcImg into canvas region [regionY .. H], fitting width=W, always top-aligned
+  // so the head (top of image) is never cropped.
+  function drawPhotoIntoRegion(ctx, srcImg, W, H, regionY) {
+    var regionH = H - regionY;
+    var aspect  = srcImg.naturalWidth / srcImg.naturalHeight;
+    // Scale to fill the region width, then check height
+    var sw = W;
+    var sh = W / aspect;
+    // If scaled height is smaller than region, scale up to fill height instead
+    if (sh < regionH) { sh = regionH; sw = regionH * aspect; }
+    // Always start from top of source image (no vertical offset into source)
+    // Centre horizontally
+    var ox = (W - sw) / 2;
+    ctx.drawImage(srcImg, ox, regionY, sw, sh);
+  }
+
+  // ── Main build ──────────────────────────────────────────────
+  function buildAndShow(photoIdx,name,title,variantNum){
+    var v=VARIANTS[variantNum%VARIANTS.length];
+    var srcImg=new Image();
+    srcImg.onload=function(){
+      try{
+        var W=800,H=1200;
+        var sub=SUBTITLES[v.subIdx];
+
+        // Determine where the photo region starts for this layout
+        var regionY = photoStartY(v.layout, W, H);
+
+        // Draw onto a temp canvas for colour treatment
+        var tmpC = document.createElement('canvas'); tmpC.width=W; tmpC.height=H;
+        var tmpCtx = tmpC.getContext('2d');
+        drawPhotoIntoRegion(tmpCtx, srcImg, W, H, regionY);
+
+        // Apply colour treatment only to the photo region
+        var id = tmpCtx.getImageData(0, regionY, W, H - regionY);
+        applyTreatment(id.data, v.treatment);
+        tmpCtx.putImageData(id, 0, regionY);
+
+        var canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+        var ctx=canvas.getContext('2d');
+        ctx.drawImage(tmpC,0,0);
+
+        if     (v.layout===0)layout0(ctx,W,H,name,title,sub);
+        else if(v.layout===1)layout1(ctx,W,H,name,title,sub);
+        else if(v.layout===2)layout2(ctx,W,H,name,title,sub);
+        else if(v.layout===3)layout3(ctx,W,H,name,title,sub);
+        else if(v.layout===4)layout4(ctx,W,H,name,title,sub);
+        else if(v.layout===5)layout5(ctx,W,H,name,title,sub);
+        else                  layout6(ctx,W,H,name,title,sub);
+
+        var dataUrl=canvas.toDataURL('image/png');
+        lastDataUrl=dataUrl;coverImg.src=dataUrl;setState('done');
+      }catch(e){showError('Fehler: '+e.message);setState('empty');}
+    };
+    srcImg.onerror=function(){showError('Foto konnte nicht geladen werden.');setState('empty');};
+    srcImg.src=photos[photoIdx].dataUrl;
+  }
+
+  function mimeOf(d){if(d.indexOf('data:image/png')===0)return'image/png';if(d.indexOf('data:image/webp')===0)return'image/webp';if(d.indexOf('data:image/gif')===0)return'image/gif';return'image/jpeg';}
+
+})();
+</script>
+</body>
+</html>
