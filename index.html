@@ -195,10 +195,6 @@
     bookCover.style.display=s==='done'?'block':'none';
     if(s==='done'){coverActions.classList.add('active');}else{coverActions.classList.remove('active');}
     btnGenerate.disabled=s==='loading';
-  } else {
-      coverActions.classList.remove('active');
-    }
-    btnGenerate.disabled=s==='loading';
   }
 
   function showError(msg){errorMsg.textContent=msg;errorMsg.style.display='block';}
