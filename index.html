@@ -39,7 +39,7 @@
   #book-cover { display: none; width: 100%; aspect-ratio: 2/3; box-shadow: 8px 12px 40px rgba(0,0,0,0.18), 2px 4px 8px rgba(0,0,0,0.1); overflow: hidden; }
   #book-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
   .cover-actions { display: none; gap: 8px; margin-top: 1rem; }
-  .btn-download { flex: 1; padding: 0.7rem; background: transparent; border: 1px solid #111; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #111; transition: background 0.2s, color 0.2s; text-align: center; text-decoration: none; display: block; }
+  .btn-download { flex: 1; padding: 0.7rem; background: transparent; border: 1px solid #111; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #111; transition: background 0.2s, color 0.2s; text-align: center; text-decoration: none; }
   .btn-download:hover { background: #111; color: #fff; }
   .btn-retry { padding: 0.7rem 1rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #666; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
   .btn-retry:hover { border-color: #111; color: #111; }
@@ -54,11 +54,13 @@
     .loading-state { aspect-ratio: 3/2; }
     #book-cover { max-width: 72vw; margin: 0 auto; }
     .cover-actions { flex-direction: column; }
-    .btn-download, .btn-retry { width: 100%; text-align: center; }
+    .cover-actions[style*="flex"] { display: flex !important; }
+    .btn-download, .btn-retry { width: 100%; text-align: center; display: block; }
     .field { margin-bottom: 1.25rem; }
     .btn-generate { margin-top: 1.25rem; padding: 1rem; font-size: 0.8rem; }
     .upload-zone { padding: 1rem; }
     .result-section h2.section-title { display: none; }
+    .drag-hint { display: none; }
   }
 </style>
 </head>
@@ -79,7 +81,7 @@
       <label class="upload-zone" id="upload-zone">
         <input type="file" id="file-input" accept="image/*" multiple>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        <p><strong>Klicken</strong> oder Foto hierher ziehen</p>
+        <p><strong>Klicken</strong> <span class="drag-hint">oder Foto hierher ziehen</span></p>
         <p style="margin-top:0.25rem;">JPG, PNG · bis zu 3 Fotos</p>
       </label>
       <div class="photo-grid" id="photo-grid"></div>
