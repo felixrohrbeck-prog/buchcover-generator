@@ -38,13 +38,15 @@
   .loading-state p { font-size: 0.75rem; color: #aaa; font-weight: 300; letter-spacing: 0.06em; }
   #book-cover { display: none; width: 100%; aspect-ratio: 2/3; box-shadow: 8px 12px 40px rgba(0,0,0,0.18), 2px 4px 8px rgba(0,0,0,0.1); overflow: hidden; }
   #book-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
-  /* Buttons unter dem Cover – IMMER nebeneinander auf Desktop */
-  .cover-actions { display: none; flex-direction: row; gap: 8px; margin-top: 1rem; }
-  .cover-actions.visible { display: flex !important; }
-  .btn-download { flex: 1; padding: 0.7rem; background: transparent; border: 1px solid #111; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #111; transition: background 0.2s, color 0.2s; text-align: center; }
+  /* Buttons immer sichtbar, ausgegraut bis Cover fertig */
+  .cover-actions { display: flex; flex-direction: row; gap: 8px; margin-top: 1rem; }
+  .btn-download { flex: 1; padding: 0.7rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #ccc; transition: background 0.2s, color 0.2s, border-color 0.2s; text-align: center; }
+  .btn-download.active { border-color: #111; color: #111; }
+  .btn-download.active:hover { background: #111; color: #fff; }
   .btn-download:hover { background: #111; color: #fff; }
-  .btn-retry { padding: 0.7rem 1rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #666; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
-  .btn-retry:hover { border-color: #111; color: #111; }
+  .btn-retry { padding: 0.7rem 1rem; background: transparent; border: 1px solid #eee; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #ccc; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
+  .btn-retry.active { border-color: #ccc; color: #666; }
+  .btn-retry.active:hover { border-color: #111; color: #111; }
 
   @media (max-width: 700px) {
     body { padding: 1.25rem 1rem; }
@@ -55,7 +57,7 @@
     .result-placeholder { aspect-ratio: 3/2; }
     .loading-state { aspect-ratio: 3/2; }
     #book-cover { max-width: 72vw; margin: 0 auto; }
-    .cover-actions.visible { flex-direction: column; }
+    .cover-actions { flex-direction: column; }
     .btn-download, .btn-retry { width: 100%; text-align: center; }
     .field { margin-bottom: 1.25rem; }
     .btn-generate { margin-top: 1.25rem; padding: 1rem; font-size: 0.8rem; }
@@ -190,7 +192,17 @@
     resultPlaceholder.style.display=s==='empty'?'flex':'none';
     loadingState.style.display=s==='loading'?'flex':'none';
     bookCover.style.display=s==='done'?'block':'none';
-    if(s==='done'){coverActions.classList.add('visible');}else{coverActions.classList.remove('visible');}
+    if(s==='done'){
+      btnDownload.classList.add('active');
+      btnRetry.classList.add('active');
+      btnDownload.disabled=false;
+      btnRetry.disabled=false;
+    } else {
+      btnDownload.classList.remove('active');
+      btnRetry.classList.remove('active');
+      btnDownload.disabled=true;
+      btnRetry.disabled=true;
+    }
     btnGenerate.disabled=s==='loading';
   }
 
