@@ -9,7 +9,11 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Barlow', sans-serif; background: #fff; color: #111; padding: 1.25rem 1.75rem 1.5rem; max-width: 1100px; margin: 0 auto; }
   h2.section-title { font-weight: 600; font-size: 1.05rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e0e0e0; }
-  .layout { display: grid; grid-template-columns: 1fr 260px; gap: 2rem; align-items: start; align-items: start; }
+
+  /* ── Two-column layout: form left, fixed-width cover right ── */
+  .layout { display: grid; grid-template-columns: 1fr 260px; gap: 2rem; align-items: start; }
+
+  /* ── Form fields ── */
   .field { margin-bottom: 1.25rem; }
   .field label { display: block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 0.5rem; }
   .field input[type="text"] { width: 100%; border: none; border-bottom: 1px solid #ccc; padding: 0.35rem 0; font-family: 'EB Garamond', serif; font-size: 1.15rem; color: #111; background: transparent; outline: none; transition: border-color 0.2s; }
@@ -29,41 +33,72 @@
   .btn-generate:hover:not(:disabled) { background: #333; }
   .btn-generate:disabled { background: #ccc; cursor: not-allowed; }
   .error-msg { font-size: 0.78rem; color: #c0392b; margin-top: 0.75rem; font-weight: 300; display: none; }
-  .result-section { position: static; width: 260px; flex-shrink: 0; }
-  .result-placeholder { height: 390px; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; color: #bbb; border: 1px dashed #ddd; }
-  .result-placeholder p { font-size: 0.8rem; font-weight: 300; }
-  .loading-state { display: none; height: 390px; background: #f5f5f5; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; border: 1px solid #e0e0e0; }
+
+  /* ── Result column: fixed 260px wide, stable height ── */
+  .result-section { width: 260px; display: flex; flex-direction: column; }
+
+  /* Cover-box: FIXED container, always book-shaped (2:3).
+     Placeholder, spinner, and cover all live inside it absolutely.
+     Layout NEVER shifts regardless of state. */
+  .cover-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: #f5f5f5;
+    border: 1px dashed #ddd;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .result-placeholder {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.75rem; color: #bbb;
+  }
+  .result-placeholder p { font-size: 0.78rem; font-weight: 300; }
+
+  .loading-state {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1rem;
+  }
   .spinner { width: 28px; height: 28px; border: 2px solid #e0e0e0; border-top-color: #111; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-state p { font-size: 0.75rem; color: #aaa; font-weight: 300; letter-spacing: 0.06em; }
-  #book-cover { display: none; width: 100%; aspect-ratio: 2/3; box-shadow: 8px 12px 40px rgba(0,0,0,0.18), 2px 4px 8px rgba(0,0,0,0.1); overflow: hidden; }
-  #book-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
-  /* Buttons immer sichtbar, ausgegraut bis Cover fertig */
-  .cover-actions { display: flex; flex-direction: row; gap: 8px; margin-bottom: 0.6rem; opacity: 0.25; pointer-events: none; transition: opacity 0.3s; }
-  .cover-actions.active { opacity: 1; pointer-events: auto; }
-  .btn-download { flex: 1; padding: 0.55rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #ccc; transition: background 0.2s, color 0.2s, border-color 0.2s; text-align: center; }
-  .btn-download.active { border-color: #111; color: #111; }
-  .btn-download.active:hover { background: #111; color: #fff; }
-  .btn-download:hover { background: #111; color: #fff; }
-  .btn-retry { padding: 0.55rem 0.9rem; background: transparent; border: 1px solid #eee; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #ccc; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
-  .btn-retry.active { border-color: #ccc; color: #666; }
-  .btn-retry.active:hover { border-color: #111; color: #111; }
 
+  #book-cover {
+    position: absolute; inset: 0;
+    display: none; width: 100%; height: 100%;
+    box-shadow: 6px 10px 30px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+  #book-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
+
+  /* Action buttons: always below cover-box, never move */
+  .cover-actions {
+    display: flex; flex-direction: row; gap: 8px; margin-top: 0.6rem;
+    opacity: 0.25; pointer-events: none; transition: opacity 0.3s;
+    flex-shrink: 0;
+  }
+  .cover-actions.active { opacity: 1; pointer-events: auto; }
+  .btn-download { flex: 1; padding: 0.55rem; background: transparent; border: 1px solid #111; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; color: #111; transition: background 0.2s, color 0.2s; text-align: center; }
+  .btn-download:hover { background: #111; color: #fff; }
+  .btn-retry { padding: 0.55rem 0.9rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #666; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
+  .btn-retry:hover { border-color: #111; color: #111; }
+
+  /* ── Mobile ── */
   @media (max-width: 700px) {
     body { padding: 1.25rem 1rem; }
     h2.section-title { font-size: 0.9rem; margin-bottom: 1.25rem; }
     .layout { grid-template-columns: 1fr; gap: 0; }
     .form-section { order: 1; margin-top: 2rem; border-top: 1px solid #e0e0e0; padding-top: 2rem; }
-    .result-section { order: 0; position: static; width: 100%; }
-    .result-placeholder { aspect-ratio: 3/2; }
-    .loading-state { aspect-ratio: 3/2; }
-    #book-cover { max-width: 72vw; margin: 0 auto; }
-    .cover-actions, .cover-actions.active { flex-direction: column; }
+    .result-section { order: 0; width: 100%; }
+    .cover-box { max-width: 280px; margin: 0 auto; }
+    .cover-actions { flex-direction: column; max-width: 280px; margin: 0.6rem auto 0; }
     .btn-download, .btn-retry { width: 100%; text-align: center; }
     .field { margin-bottom: 1.25rem; }
     .btn-generate { margin-top: 1.25rem; padding: 1rem; font-size: 0.8rem; }
     .upload-zone { padding: 1rem; }
-    .result-section h2.section-title { display: none; }
     .drag-hint { display: none; }
   }
 </style>
@@ -84,30 +119,34 @@
       <label>Fotos von dir (bis zu 3)</label>
       <label class="upload-zone" id="upload-zone">
         <input type="file" id="file-input" accept="image/*" multiple>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.4rem;"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <p><strong>Klicken</strong> <span class="drag-hint">oder Foto hierher ziehen</span></p>
-        <p style="margin-top:0.25rem;">JPG, PNG · bis zu 3 Fotos</p>
+        <p style="margin-top:0.2rem;">JPG, PNG · bis zu 3 Fotos</p>
       </label>
       <div class="photo-grid" id="photo-grid"></div>
-      <p class="select-hint" id="select-hint" style="display:none">Klicke auf das Foto, das auf dem Cover erscheinen soll.</p>
+      <p class="select-hint" id="select-hint" style="display:none">Klicke auf das gewünschte Foto.</p>
     </div>
     <button class="btn-generate" id="btn-generate">Cover generieren</button>
     <p class="error-msg" id="error-msg"></p>
   </div>
+
   <div class="result-section">
-    <div class="result-placeholder" id="result-placeholder">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
-      <p>Dein Cover erscheint hier</p>
-    </div>
-    <div class="loading-state" id="loading-state">
-      <div class="spinner"></div>
-      <p>Cover wird erstellt …</p>
+    <h2 class="section-title">Vorschau</h2>
+    <div class="cover-box">
+      <div class="result-placeholder" id="result-placeholder">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+        <p>Cover erscheint hier</p>
+      </div>
+      <div class="loading-state" id="loading-state">
+        <div class="spinner"></div>
+        <p>Wird erstellt …</p>
+      </div>
+      <div id="book-cover"><img id="cover-img" src="" alt="Buchcover"></div>
     </div>
     <div class="cover-actions" id="cover-actions">
-      <button class="btn-download" id="btn-download">&#8595; Cover herunterladen</button>
+      <button class="btn-download" id="btn-download">&#8595; Herunterladen</button>
       <button class="btn-retry" id="btn-retry">Anderes Cover</button>
     </div>
-    <div id="book-cover"><img id="cover-img" src="" alt="Buchcover"></div>
   </div>
 </div>
 
