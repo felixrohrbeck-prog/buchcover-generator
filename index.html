@@ -7,7 +7,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Barlow', sans-serif; background: #fff; color: #111; padding: 3rem 2rem; max-width: 1100px; margin: 0 auto; }
+  body { font-family: 'Barlow', sans-serif; background: #fff; color: #111; padding: 2.5rem 2rem; max-width: 1100px; margin: 0 auto; }
   h2.section-title { font-weight: 600; font-size: 1.05rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e0e0e0; }
   .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
   .field { margin-bottom: 1.75rem; }
@@ -43,7 +43,23 @@
   .btn-download:hover { background: #111; color: #fff; }
   .btn-retry { padding: 0.7rem 1rem; background: transparent; border: 1px solid #ccc; font-family: 'Barlow', sans-serif; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; color: #666; transition: border-color 0.2s, color 0.2s; white-space: nowrap; }
   .btn-retry:hover { border-color: #111; color: #111; }
-  @media (max-width: 700px) { .layout { grid-template-columns: 1fr; gap: 3rem; } .result-section { position: static; } }
+
+  @media (max-width: 700px) {
+    body { padding: 1.25rem 1rem; }
+    h2.section-title { font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .layout { grid-template-columns: 1fr; gap: 0; }
+    .form-section { order: 1; margin-top: 2rem; border-top: 1px solid #e0e0e0; padding-top: 2rem; }
+    .result-section { order: 0; position: static; }
+    .result-placeholder { aspect-ratio: 3/2; }
+    .loading-state { aspect-ratio: 3/2; }
+    #book-cover { max-width: 72vw; margin: 0 auto; }
+    .cover-actions { flex-direction: column; }
+    .btn-download, .btn-retry { width: 100%; text-align: center; }
+    .field { margin-bottom: 1.25rem; }
+    .btn-generate { margin-top: 1.25rem; padding: 1rem; font-size: 0.8rem; }
+    .upload-zone { padding: 1rem; }
+    .result-section h2.section-title { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -481,6 +497,15 @@
   function mimeOf(d){if(d.indexOf('data:image/png')===0)return'image/png';if(d.indexOf('data:image/webp')===0)return'image/webp';if(d.indexOf('data:image/gif')===0)return'image/gif';return'image/jpeg';}
 
 })();
+
+  // Meldet die aktuelle Seitenhoehe an den iFrame-Elternfenster (fuer Google Sites)
+  function reportHeight() {
+    var h = document.body.scrollHeight;
+    try { window.parent.postMessage({ type: "iframeHeight", height: h }, "*"); } catch(e) {}
+  }
+  reportHeight();
+  window.addEventListener("load", reportHeight);
+  new MutationObserver(reportHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
 </script>
 </body>
 </html>
